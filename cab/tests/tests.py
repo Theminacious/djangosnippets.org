@@ -44,6 +44,7 @@ class BaseCabTestCase(TestCase):
             author=self.user_a,
             description="A greeting\n==========",
             code='print "Hello, world"',
+            version="5.0",
         )
         self.snippet1.tags.add("hello", "world")
 
@@ -53,6 +54,7 @@ class BaseCabTestCase(TestCase):
             author=self.user_b,
             description="A farewell\n==========",
             code='print "Goodbye, world"',
+            version="5.0",
         )
         self.snippet2.tags.add("goodbye", "world")
 
@@ -62,6 +64,7 @@ class BaseCabTestCase(TestCase):
             author=self.user_a,
             description="Haxor some1z db",
             code="DROP TABLE accounts;",
+            version="5.0",
         )
         self.snippet3.tags.add("haxor")
 
@@ -613,6 +616,7 @@ class ApiTestCase(TestCase):
             author=self.user_a,
             description="A greeting\n==========",
             code='print "Hello, world"',
+            version="5.0",
         )
         self.snippet1.tags.add("hello", "world")
 
@@ -622,6 +626,7 @@ class ApiTestCase(TestCase):
             author=self.user_b,
             description="A farewell\n==========",
             code='print "Goodbye, world"',
+            version="5.0",
         )
         self.snippet2.tags.add("goodbye", "world")
 
@@ -631,6 +636,7 @@ class ApiTestCase(TestCase):
             author=self.user_a,
             description="Haxor some1z db",
             code="DROP TABLE accounts;",
+            version="5.0",
         )
         self.snippet3.tags.add("haxor")
 
@@ -695,6 +701,7 @@ class SnippetListSearchTestCase(BaseCabTestCase):
         """HTMX requests should return only the partial template."""
         response = self.client.get(
             reverse("cab_snippet_list"),
+            {"q": "django"},
             HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
@@ -709,20 +716,17 @@ class SnippetListSearchTestCase(BaseCabTestCase):
             {"q": "Hello"},
         )
         self.assertEqual(response.status_code, 200)
-        # Should find snippet1 with "Hello world" in title
         self.assertIn(self.snippet1, response.context["object_list"])
-        # Should not find snippet3 with SQL in title
         self.assertNotIn(self.snippet3, response.context["object_list"])
 
     def test_search_minimum_length(self):
         """Search with less than minimum length should return all snippets."""
         response = self.client.get(
             reverse("cab_snippet_list"),
-            {"q": "a"},  # Single character, below MIN_QUERY_LENGTH
+            {"q": "a"},
         )
         self.assertEqual(response.status_code, 200)
-        # Should return all snippets (no filtering applied)
-        self.assertEqual(len(response.context["object_list"]), 3)
+        self.assertEqual(len(list(response.context["object_list"])), 3)
 
     def test_search_no_results(self):
         """Search with no matches should return empty list."""
@@ -731,17 +735,16 @@ class SnippetListSearchTestCase(BaseCabTestCase):
             {"q": "nonexistent"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context["object_list"]), 0)
+        self.assertEqual(len(list(response.context["object_list"])), 0)
 
     def test_htmx_search_with_query(self):
         """HTMX search request should return filtered partial."""
         response = self.client.get(
             reverse("cab_snippet_list"),
             {"q": "world"},
-            HTTP_HX_REQUEST="true",
+            headers={"HX-Request": "true"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "cab/partials/_snippet_table.html")
-        # Should include snippets with "world" in title
         self.assertIn(self.snippet1, response.context["object_list"])
         self.assertIn(self.snippet2, response.context["object_list"])

@@ -5,8 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.mail import mail_admins
+from django.db import connection
 from django.db.models import Count, Q
-from django.db.utils import NotSupportedError, ProgrammingError
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -17,33 +17,30 @@ from cab.models import Language, Snippet, SnippetFlag
 from cab.utils import month_object_list, object_detail
 
 # Constants
-MIN_QUERY_LENGTH = 3
+MIN_QUERY_LENGTH = 2
 
 
 def snippet_list(request, queryset=None, **kwargs):
     if queryset is None:
         queryset = Snippet.objects.active_snippet()
 
-    # Handle search query
+    SEARCH_MIN_LENGTH = 3
     q = request.GET.get("q", "").strip()
-    if q and len(q) >= MIN_QUERY_LENGTH:
-        # Try PostgreSQL full-text search with ranking
-        try:
+    if q and len(q) >= SEARCH_MIN_LENGTH:
+        if connection.vendor == "postgresql":
             search_vector = SearchVector("title", "description", "author__username")
             search_query = SearchQuery(q)
             queryset = queryset.annotate(
                 search=search_vector,
                 rank=SearchRank(search_vector, search_query)
             ).filter(search=search_query).order_by("-rank")
-        except (NotSupportedError, ProgrammingError):
-            # Fallback to simple case-insensitive search if PostgreSQL FTS unavailable
+        else:
             queryset = queryset.filter(
                 Q(title__icontains=q) | 
                 Q(description__icontains=q) | 
                 Q(author__username__icontains=q)
             )
         
-        # Pass query to template context
         if "extra_context" not in kwargs:
             kwargs["extra_context"] = {}
         kwargs["extra_context"]["query"] = q
