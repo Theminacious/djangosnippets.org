@@ -18,15 +18,15 @@ from cab.utils import month_object_list, object_detail
 
 # Constants
 MIN_QUERY_LENGTH = 2
+SNIPPET_SEARCH_MIN_LENGTH = 3
 
 
 def snippet_list(request, queryset=None, **kwargs):
     if queryset is None:
         queryset = Snippet.objects.active_snippet()
 
-    SEARCH_MIN_LENGTH = 3
     q = request.GET.get("q", "").strip()
-    if q and len(q) >= SEARCH_MIN_LENGTH:
+    if q and len(q) > SNIPPET_SEARCH_MIN_LENGTH:
         if connection.vendor == "postgresql":
             search_vector = SearchVector("title", "description", "author__username")
             search_query = SearchQuery(q)

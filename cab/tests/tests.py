@@ -742,7 +742,7 @@ class SnippetListSearchTestCase(BaseCabTestCase):
         response = self.client.get(
             reverse("cab_snippet_list"),
             {"q": "world"},
-            headers={"HX-Request": "true"},
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "cab/partials/_snippet_table.html")
